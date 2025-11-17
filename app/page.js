@@ -9,7 +9,7 @@ export default function Teachy() {
   const [loading, setLoading] = useState(false);
   const [category, setCategory] = useState("General");
   const [darkMode, setDarkMode] = useState(true);
-  const [menuOpen, setMenuOpen] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const chatEndRef = useRef(null);
   const categories = ["General", "Math", "Science", "History"];
@@ -93,38 +93,19 @@ export default function Teachy() {
       };
 
   return (
-    <div style={{ display: "flex", height: "100vh", fontFamily: "'Inter', sans-serif" }}>
+    <div className="teachy-container" style={{ fontFamily: "'Inter', sans-serif" }}>
       {/* Sidebar */}
-      <div
-        style={{
-          width: menuOpen ? "260px" : "0",
-          transition: "width 0.3s",
-          backgroundColor: colors.sidebar,
-          color: colors.text,
-          display: "flex",
-          flexDirection: "column",
-          padding: menuOpen ? "25px" : "0",
-          overflow: "hidden",
-        }}
-      >
-        <h1 style={{ fontSize: "24px", marginBottom: "40px", fontWeight: "bold" }}>Teachy</h1>
+      <div className={`sidebar ${menuOpen ? "open" : ""}`} style={{ backgroundColor: colors.sidebar, color: colors.text }}>
+        <h1 className="sidebar-title">Teachy</h1>
 
         {categories.map(cat => (
           <button
             key={cat}
             onClick={() => setCategory(cat)}
+            className={`category-btn ${category === cat ? "active" : ""}`}
             style={{
-              padding: "12px 15px",
-              marginBottom: "12px",
-              borderRadius: "10px",
-              border: "none",
               backgroundColor: category === cat ? colors.highlight : "transparent",
               color: category === cat ? "#fff" : colors.text,
-              cursor: "pointer",
-              textAlign: "left",
-              fontWeight: category === cat ? "600" : "400",
-              transition: "all 0.2s",
-              boxShadow: category === cat ? "0 4px 10px rgba(0,0,0,0.3)" : "none",
             }}
           >
             {cat}
@@ -133,27 +114,28 @@ export default function Teachy() {
 
         <button
           onClick={() => setDarkMode(!darkMode)}
-          style={{
-            marginTop: "auto",
-            padding: "12px",
-            borderRadius: "10px",
-            border: "none",
-            backgroundColor: colors.button,
-            color: "#fff",
-            cursor: "pointer",
-            fontWeight: "600",
-          }}
+          className="darkmode-btn"
+          style={{ backgroundColor: colors.button }}
         >
           {darkMode ? "Light Mode" : "Dark Mode"}
         </button>
       </div>
 
       {/* Chat Area */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", backgroundColor: colors.background, color: colors.text }}>
-        <div style={{ flex: 1, overflowY: "auto", padding: "25px", display: "flex", flexDirection: "column", gap: "15px" }}>
+      <div className="chat-area" style={{ backgroundColor: colors.background, color: colors.text }}>
+        {/* Top bar for mobile */}
+        <div className="mobile-topbar" style={{ backgroundColor: colors.sidebar, color: colors.text }}>
+          <button onClick={() => setMenuOpen(!menuOpen)} className="menu-toggle" style={{ backgroundColor: colors.button }}>
+            ≡
+          </button>
+          <h2 className="category-label">Category: {category}</h2>
+        </div>
+
+        {/* Chat history */}
+        <div className="chat-history">
           {history.map((msg, idx) => (
-            <div key={idx} style={{ display: "flex", justifyContent: msg.sender === "user" ? "flex-end" : "flex-start" }}>
-              <div style={{ maxWidth: "70%", backgroundColor: msg.sender === "user" ? colors.userMsg : colors.aiMsg, color: "#fff", padding: "16px 20px", borderRadius: "20px", wordBreak: "break-word", boxShadow: "0 4px 12px rgba(0,0,0,0.2)", position: "relative", lineHeight: "1.7", fontSize: "0.95rem" }}>
+            <div key={idx} className={`chat-msg ${msg.sender}`}>
+              <div className="msg-bubble" style={{ backgroundColor: msg.sender === "user" ? colors.userMsg : colors.aiMsg }}>
                 {msg.sender === "ai" ? (
                   <ReactMarkdown
                     children={msg.text || ""}
@@ -172,18 +154,154 @@ export default function Teachy() {
           <div ref={chatEndRef}></div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", padding: "18px 25px", borderTop: `1px solid ${darkMode ? "#333" : "#ccc"}`, backgroundColor: darkMode ? "#1C1C1C" : "#fafafa", gap: "8px", alignItems: "center" }}>
+        {/* Input */}
+        <form className="chat-input" onSubmit={handleSubmit}>
           <input
             type="text"
             value={question}
             onChange={e => setQuestion(e.target.value)}
             placeholder={loading ? "Waiting for AI..." : "Type your question..."}
-            style={{ flex: 1, padding: "14px 20px", borderRadius: "25px", border: "none", outline: "none", backgroundColor: colors.inputBg, color: darkMode ? "#fff" : "#000", fontSize: "0.95rem" }}
             disabled={loading}
           />
-          <button type="submit" disabled={loading} style={{ padding: "14px 25px", borderRadius: "25px", border: "none", backgroundColor: colors.button, color: "#fff", fontWeight: "600", cursor: "pointer" }}>Send</button>
+          <button type="submit" disabled={loading} style={{ backgroundColor: colors.button }}>Send</button>
         </form>
       </div>
+
+      {/* Styles */}
+      <style jsx>{`
+        .teachy-container {
+          display: flex;
+          height: 100vh;
+        }
+
+        .sidebar {
+          width: 260px;
+          padding: 25px;
+          display: flex;
+          flex-direction: column;
+          transition: transform 0.3s ease;
+        }
+        .sidebar .sidebar-title {
+          font-size: 24px;
+          margin-bottom: 40px;
+          font-weight: bold;
+        }
+        .category-btn {
+          padding: 12px 15px;
+          margin-bottom: 12px;
+          border-radius: 10px;
+          border: none;
+          cursor: pointer;
+          text-align: left;
+          font-weight: 500;
+        }
+        .category-btn.active {
+          font-weight: 600;
+        }
+        .darkmode-btn {
+          margin-top: auto;
+          padding: 12px;
+          border: none;
+          border-radius: 10px;
+          color: #fff;
+          cursor: pointer;
+          font-weight: 600;
+        }
+
+        .chat-area {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .mobile-topbar {
+          display: none;
+          padding: 12px;
+          align-items: center;
+          gap: 10px;
+        }
+        .menu-toggle {
+          padding: 6px 12px;
+          border: none;
+          border-radius: 8px;
+          color: #fff;
+          cursor: pointer;
+          font-weight: 600;
+        }
+
+        .chat-history {
+          flex: 1;
+          overflow-y: auto;
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
+        }
+        .chat-msg {
+          display: flex;
+        }
+        .chat-msg.user {
+          justify-content: flex-end;
+        }
+        .msg-bubble {
+          max-width: 70%;
+          padding: 16px 20px;
+          border-radius: 20px;
+          word-break: break-word;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+          line-height: 1.7;
+          font-size: 0.95rem;
+        }
+
+        .chat-input {
+          display: flex;
+          padding: 12px 15px;
+          border-top: 1px solid #333;
+          gap: 8px;
+          align-items: center;
+        }
+        .chat-input input {
+          flex: 1;
+          padding: 14px 20px;
+          border-radius: 25px;
+          border: none;
+          outline: none;
+          font-size: 0.95rem;
+        }
+        .chat-input button {
+          padding: 14px 25px;
+          border-radius: 25px;
+          border: none;
+          color: #fff;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+          .teachy-container {
+            flex-direction: column;
+          }
+          .sidebar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            transform: translateX(-100%);
+            z-index: 50;
+            background-color: inherit;
+          }
+          .sidebar.open {
+            transform: translateX(0);
+          }
+          .mobile-topbar {
+            display: flex;
+          }
+          .chat-area {
+            flex: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }
