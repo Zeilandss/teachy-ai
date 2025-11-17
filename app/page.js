@@ -14,7 +14,6 @@ export default function Teachy() {
   const chatEndRef = useRef(null);
   const categories = ["General", "Math", "Science", "History"];
 
-  // Load history per category
   useEffect(() => {
     try {
       const saved = localStorage.getItem(`teachy_history_${category}`);
@@ -25,9 +24,7 @@ export default function Teachy() {
   }, [category]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(`teachy_history_${category}`, JSON.stringify(history));
-    } catch {}
+    localStorage.setItem(`teachy_history_${category}`, JSON.stringify(history));
   }, [history, category]);
 
   useEffect(() => {
@@ -39,7 +36,7 @@ export default function Teachy() {
     if (!question.trim()) return;
 
     setLoading(true);
-    setHistory((prev) => [...prev, { sender: "user", text: question }]);
+    setHistory(prev => [...prev, { sender: "user", text: question }]);
     setQuestion("");
 
     try {
@@ -49,17 +46,18 @@ export default function Teachy() {
         body: JSON.stringify({ question, category }),
       });
 
-      let data = { answer: "Teachy could not respond." };
+      let data;
       try {
         data = await res.json();
       } catch {
         console.error("Failed to parse API JSON");
+        data = { answer: "Error: AI response invalid." };
       }
 
-      setHistory((prev) => [...prev, { sender: "ai", text: data.answer }]);
+      setHistory(prev => [...prev, { sender: "ai", text: data.answer }]);
     } catch (err) {
       console.error(err);
-      setHistory((prev) => [...prev, { sender: "ai", text: "Error: Could not get answer." }]);
+      setHistory(prev => [...prev, { sender: "ai", text: "Error: Could not get answer." }]);
     }
 
     setLoading(false);
@@ -111,8 +109,7 @@ export default function Teachy() {
       >
         <h1 style={{ fontSize: "24px", marginBottom: "40px", fontWeight: "bold" }}>Teachy</h1>
 
-        {/* Categories */}
-        {categories.map((cat) => (
+        {categories.map(cat => (
           <button
             key={cat}
             onClick={() => setCategory(cat)}
@@ -134,7 +131,6 @@ export default function Teachy() {
           </button>
         ))}
 
-        {/* Dark mode toggle */}
         <button
           onClick={() => setDarkMode(!darkMode)}
           style={{
@@ -154,21 +150,9 @@ export default function Teachy() {
 
       {/* Chat Area */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", backgroundColor: colors.background, color: colors.text }}>
-        {/* Mobile menu */}
-        <div style={{ display: "flex", padding: "12px", backgroundColor: colors.sidebar, alignItems: "center", gap: "10px", borderBottom: `1px solid ${darkMode ? "#333" : "#ccc"}` }}>
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            style={{ padding: "6px 12px", border: "none", borderRadius: "8px", backgroundColor: colors.button, color: "#fff", cursor: "pointer", fontWeight: "600" }}
-          >
-            ≡
-          </button>
-          <h2 style={{ margin: 0, fontWeight: "500" }}>Category: {category}</h2>
-        </div>
-
-        {/* Chat history */}
         <div style={{ flex: 1, overflowY: "auto", padding: "25px", display: "flex", flexDirection: "column", gap: "15px" }}>
-          {history.map((msg, index) => (
-            <div key={index} style={{ display: "flex", justifyContent: msg.sender === "user" ? "flex-end" : "flex-start" }}>
+          {history.map((msg, idx) => (
+            <div key={idx} style={{ display: "flex", justifyContent: msg.sender === "user" ? "flex-end" : "flex-start" }}>
               <div style={{ maxWidth: "70%", backgroundColor: msg.sender === "user" ? colors.userMsg : colors.aiMsg, color: "#fff", padding: "16px 20px", borderRadius: "20px", wordBreak: "break-word", boxShadow: "0 4px 12px rgba(0,0,0,0.2)", position: "relative", lineHeight: "1.7", fontSize: "0.95rem" }}>
                 {msg.sender === "ai" ? (
                   <ReactMarkdown
@@ -188,12 +172,11 @@ export default function Teachy() {
           <div ref={chatEndRef}></div>
         </div>
 
-        {/* Input bar */}
         <form onSubmit={handleSubmit} style={{ display: "flex", padding: "18px 25px", borderTop: `1px solid ${darkMode ? "#333" : "#ccc"}`, backgroundColor: darkMode ? "#1C1C1C" : "#fafafa", gap: "8px", alignItems: "center" }}>
           <input
             type="text"
             value={question}
-            onChange={(e) => setQuestion(e.target.value)}
+            onChange={e => setQuestion(e.target.value)}
             placeholder={loading ? "Waiting for AI..." : "Type your question..."}
             style={{ flex: 1, padding: "14px 20px", borderRadius: "25px", border: "none", outline: "none", backgroundColor: colors.inputBg, color: darkMode ? "#fff" : "#000", fontSize: "0.95rem" }}
             disabled={loading}
@@ -201,17 +184,6 @@ export default function Teachy() {
           <button type="submit" disabled={loading} style={{ padding: "14px 25px", borderRadius: "25px", border: "none", backgroundColor: colors.button, color: "#fff", fontWeight: "600", cursor: "pointer" }}>Send</button>
         </form>
       </div>
-
-      <style>{`
-        div[style*="flex-direction: column; gap: 15px"] > div {
-          opacity: 0;
-          transform: translateY(10px);
-          animation: fadeIn 0.3s forwards;
-        }
-        @keyframes fadeIn {
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </div>
   );
 }
