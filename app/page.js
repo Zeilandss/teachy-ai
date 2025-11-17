@@ -10,14 +10,11 @@ export default function Teachy() {
   const [category, setCategory] = useState("General");
   const [darkMode, setDarkMode] = useState(true);
   const [menuOpen, setMenuOpen] = useState(true);
-  const [uploadedImage, setUploadedImage] = useState(null);
-  const [user, setUser] = useState(null); // Placeholder for account
-  const [plan, setPlan] = useState("Free"); // Placeholder for plan selection
-  const chatEndRef = useRef(null);
 
+  const chatEndRef = useRef(null);
   const categories = ["General", "Math", "Science", "History"];
 
-  // Load/save history per category
+  // Load history per category
   useEffect(() => {
     try {
       const saved = localStorage.getItem(`teachy_history_${category}`);
@@ -39,34 +36,32 @@ export default function Teachy() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!question.trim() && !uploadedImage) return;
+    if (!question.trim()) return;
 
     setLoading(true);
-
-    const userMessage = { sender: "user", text: question || "[Image]" };
-    setHistory((prev) => [...prev, userMessage]);
+    setHistory((prev) => [...prev, { sender: "user", text: question }]);
     setQuestion("");
 
     try {
-      const formData = new FormData();
-      formData.append("question", question);
-      formData.append("category", category);
-      if (uploadedImage) formData.append("image", uploadedImage);
-
       const res = await fetch("/api/solveText", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, category }),
       });
 
-      const data = await res.json();
-      const answer = data?.answer || "Error: No answer received.";
-      setHistory((prev) => [...prev, { sender: "ai", text: answer }]);
+      let data = { answer: "Teachy could not respond." };
+      try {
+        data = await res.json();
+      } catch {
+        console.error("Failed to parse API JSON");
+      }
+
+      setHistory((prev) => [...prev, { sender: "ai", text: data.answer }]);
     } catch (err) {
       console.error(err);
       setHistory((prev) => [...prev, { sender: "ai", text: "Error: Could not get answer." }]);
     }
 
-    setUploadedImage(null);
     setLoading(false);
   };
 
@@ -115,32 +110,6 @@ export default function Teachy() {
         }}
       >
         <h1 style={{ fontSize: "24px", marginBottom: "40px", fontWeight: "bold" }}>Teachy</h1>
-
-        {/* User account / plan */}
-        <div style={{ marginBottom: "30px" }}>
-          {user ? (
-            <div>
-              <p style={{ margin: "0 0 5px 0" }}>Hello, {user.name}</p>
-              <p style={{ margin: "0", fontSize: "0.9em" }}>Plan: {plan}</p>
-            </div>
-          ) : (
-            <button
-              style={{
-                padding: "10px 15px",
-                borderRadius: "10px",
-                border: "none",
-                backgroundColor: colors.button,
-                color: "#fff",
-                cursor: "pointer",
-                fontWeight: "600",
-                width: "100%",
-              }}
-              onClick={() => alert("Sign Up/Login placeholder")}
-            >
-              Sign Up / Login
-            </button>
-          )}
-        </div>
 
         {/* Categories */}
         {categories.map((cat) => (
@@ -205,26 +174,14 @@ export default function Teachy() {
                   <ReactMarkdown
                     children={msg.text || ""}
                     components={{
-                      code({ children }) {
-                        return <code style={{ backgroundColor: darkMode ? "#333" : "#ddd", color: darkMode ? "#FF8C42" : "#FF4500", padding: "3px 6px", borderRadius: "5px", fontFamily: "monospace" }}>{children}</code>;
-                      },
-                      pre({ children }) {
-                        return <pre style={{ backgroundColor: darkMode ? "#222" : "#eee", padding: "12px", borderRadius: "12px", overflowX: "auto", color: darkMode ? "#FF8C42" : "#FF4500", fontFamily: "monospace" }}>{children}</pre>;
-                      },
+                      code({ children }) { return <code style={{ backgroundColor: darkMode ? "#333" : "#ddd", color: darkMode ? "#FF8C42" : "#FF4500", padding: "3px 6px", borderRadius: "5px", fontFamily: "monospace" }}>{children}</code>; },
+                      pre({ children }) { return <pre style={{ backgroundColor: darkMode ? "#222" : "#eee", padding: "12px", borderRadius: "12px", overflowX: "auto", color: darkMode ? "#FF8C42" : "#FF4500", fontFamily: "monospace" }}>{children}</pre>; },
                       li({ children }) { return <li style={{ marginBottom: "6px" }}>• {children}</li>; },
                       strong({ children }) { return <strong style={{ color: "#FF8C42" }}>{children}</strong>; },
                       em({ children }) { return <em style={{ color: "#FFA500" }}>{children}</em>; },
                     }}
                   />
                 ) : msg.text}
-
-                {msg.sender === "ai" && (
-                  <div style={{ position: "absolute", top: "5px", right: "5px", display: "flex", gap: "5px" }}>
-                    <button onClick={() => copyToClipboard(msg.text || "")} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontSize: "14px" }}>📋</button>
-                    <button onClick={() => alert("Liked!")} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontSize: "14px" }}>👍</button>
-                    <button onClick={() => alert("Saved!")} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontSize: "14px" }}>⭐</button>
-                  </div>
-                )}
               </div>
             </div>
           ))}
@@ -233,12 +190,6 @@ export default function Teachy() {
 
         {/* Input bar */}
         <form onSubmit={handleSubmit} style={{ display: "flex", padding: "18px 25px", borderTop: `1px solid ${darkMode ? "#333" : "#ccc"}`, backgroundColor: darkMode ? "#1C1C1C" : "#fafafa", gap: "8px", alignItems: "center" }}>
-          {/* Image button */}
-          <label style={{ cursor: "pointer", padding: "10px", borderRadius: "10px", backgroundColor: colors.button, color: "#fff", fontWeight: "600" }}>
-            📷
-            <input type="file" accept="image/*" onChange={(e) => setUploadedImage(e.target.files[0])} style={{ display: "none" }} />
-          </label>
-
           <input
             type="text"
             value={question}

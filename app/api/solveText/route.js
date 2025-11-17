@@ -1,77 +1,43 @@
 import { NextResponse } from "next/server";
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+export const runtime = "nodejs";
 
 export async function POST(req) {
   try {
-    // Read FormData from request
-    const form = await req.formData();
-    const question = form.get("question") || "";
-    const category = form.get("category") || "General";
-    const image = form.get("image"); // File object or null
+    const data = await req.json();
+    const question = data?.question || "Hello";
+    const category = data?.category || "General";
 
-    let imageBase64 = null;
-
-    // Convert image to Base64 for GPT-5 Vision
-    if (image && image.size > 0) {
-      const arrayBuffer = await image.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      imageBase64 = buffer.toString("base64");
-    }
-
-    // System prompt
-    const systemPrompt = `You are an AI tutor specialized in ${category}. 
-Provide clear explanations and step-by-step reasoning only when helpful.`;
-
-
-    // Build OpenAI messages
-    const userContent = [];
-
-    if (question.trim().length > 0) {
-      userContent.push({
-        type: "text",
-        text: question,
-      });
-    }
-
-    if (imageBase64) {
-      userContent.push({
-        type: "image",
-        image: imageBase64,
-      });
+    if (!process.env.OPENAI_API_KEY) {
+      console.error("[Teachy] Missing OpenAI API key");
+      return NextResponse.json({ answer: "Server missing OpenAI API key." });
     }
 
     const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userContent },
+      { role: "system", content: `You are an AI tutor specialized in ${category}. Answer clearly.` },
+      { role: "user", content: question },
     ];
 
-    // Send to OpenAI GPT-5 Vision
     const apiRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: "gpt-5-vision-mini",
-        messages,
-      }),
+      body: JSON.stringify({ model: "gpt-5-mini", messages }),
     });
 
-    const data = await apiRes.json();
-    const answer = data?.choices?.[0]?.message?.content || "No response";
+    if (!apiRes.ok) {
+      console.error("[Teachy] OpenAI request failed:", apiRes.status, await apiRes.text());
+      return NextResponse.json({ answer: "Teachy could not get a response from OpenAI." });
+    }
+
+    const apiData = await apiRes.json();
+    const answer = apiData?.choices?.[0]?.message?.content || "Teachy could not generate an answer.";
 
     return NextResponse.json({ answer });
-  } catch (error) {
-    console.error("API route error:", error);
-    return NextResponse.json(
-      { answer: "Failed to process request." },
-      { status: 500 }
-    );
+  } catch (err) {
+    console.error("[Teachy] Unexpected error:", err);
+    return NextResponse.json({ answer: "Error processing your question." });
   }
 }
