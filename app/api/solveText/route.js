@@ -1,62 +1,31 @@
-// route.js (or route.ts in Next.js API route)
+"use server";
 
-import formidable from "formidable";
-import fs from "fs";
-import { Configuration, OpenAIApi } from "openai";
+import OpenAI from "openai";
 
-// Disable default Next.js body parser so formidable can handle files
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-const openai = new OpenAIApi(new Configuration({
+const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-}));
+});
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ answer: "Method not allowed" });
-  }
+export async function POST(req) {
+  try {
+    const form = await req.formData();
 
-  const form = new formidable.IncomingForm();
-  form.keepExtensions = true;
+    const question = form.get("question") || "";
+    const category = form.get("category") || "General";
+    const image = form.get("image");
 
-  form.parse(req, async (err, fields, files) => {
-    if (err) {
-      console.error("Form parse error:", err);
-      return res.status(500).json({ answer: "Error processing your request." });
-    }
-
-    const question = fields.question || "";
-    const category = fields.category || "General";
-    const imageFile = files.image;
-
-    let imageBuffer = null;
-    let imageMime = null;
-
-    if (imageFile) {
-      // Read image into buffer
-      try {
-        imageBuffer = fs.readFileSync(imageFile.filepath);
-        imageMime = imageFile.mimetype;
-      } catch (e) {
-        console.error("Error reading image file:", e);
-        return res.status(500).json({ answer: "Error reading the uploaded image." });
-      }
-    }
-
-    // Now build the messages for the OpenAI chat
+    // Build chat messages
     const messages = [];
 
-    // System / persona message
     messages.push({
       role: "system",
-      content: "You are a friendly teacher AI who can analyze images and answer questions clearly.",
+      content:
+        "You are TeachyAI, a friendly humanoid teacher who explains things clearly, kindly, and simply. You encourage students and never lecture them.",
     });
 
-    // User's text question
     if (question) {
       messages.push({
         role: "user",
@@ -64,47 +33,52 @@ export default async function handler(req, res) {
       });
     }
 
-    // If there is an image, add it as a “user” message with image content
-    if (imageBuffer) {
-      // Convert the image to base64
-      const base64 = imageBuffer.toString("base64");
-      const dataUrl = `data:${imageMime};base64,${base64}`;
+    // If an image was sent, attach it as base64
+    if (image && typeof image !== "string") {
+      const bytes = await image.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      const mime = image.type;
 
-      // Attach as image — this syntax follows OpenAI's multimodal message format
+      const base64 = `data:${mime};base64,${buffer.toString("base64")}`;
+
       messages.push({
         role: "user",
         content: [
           {
             type: "image_url",
-            image_url: {
-              url: dataUrl,
-            },
+            image_url: { url: base64 },
           },
         ],
       });
     }
 
-    // You can also add a category context
-    if (category) {
-      messages.push({
-        role: "assistant",
-        content: `Category: ${category}`,
-      });
-    }
+    // Add category context
+    messages.push({
+      role: "assistant",
+      content: `Category: ${category}`,
+    });
 
-    try {
-      const completion = await openai.createChatCompletion({
-        model: "gpt-4o",  // or another vision‑enabled GPT‑4 model you have access to
-        messages: messages,
-        max_tokens: 1000,
-        temperature: 0.7,
-      });
+    // OpenAI Request
+    const completion = await client.chat.completions.create({
+      model: "gpt-4o",
+      messages: messages,
+      temperature: 0.7,
+      max_tokens: 1000,
+    });
 
-      const answer = completion.data.choices[0].message.content;
-      return res.status(200).json({ answer });
-    } catch (apiError) {
-      console.error("OpenAI API error:", apiError);
-      return res.status(500).json({ answer: "Error generating response from AI." });
-    }
-  });
+    const answer =
+      completion.choices?.[0]?.message?.content ||
+      "I couldn't generate a good answer.";
+
+    return new Response(JSON.stringify({ answer }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    console.error("API ERROR:", err);
+    return new Response(
+      JSON.stringify({ answer: "Error processing your request." }),
+      { status: 500 }
+    );
+  }
 }
