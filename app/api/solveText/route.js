@@ -1,83 +1,70 @@
-"use server";
-
 import OpenAI from "openai";
+import formidable from "formidable";
+import fs from "fs";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+// Tell Next.js to disable its default body parser for this route
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
+// Initialize OpenAI client
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Parse form-data (text + image)
+const parseForm = (req) =>
+  new Promise((resolve, reject) => {
+    const form = formidable({ multiples: false });
+
+    form.parse(req, (err, fields, files) => {
+      if (err) reject(err);
+      else resolve({ fields, files });
+    });
+  });
+
 export async function POST(req) {
   try {
-    const form = await req.formData();
+    const { fields, files } = await parseForm(req);
 
-    const question = form.get("question") || "";
-    const category = form.get("category") || "General";
-    const image = form.get("image");
+    const userMessage = fields.message || "";
 
-    // Build chat messages
-    const messages = [];
+    const imageFile = files.image
+      ? fs.readFileSync(files.image.filepath)
+      : null;
 
-    messages.push({
-      role: "system",
-      content:
-        "You are TeachyAI, a friendly humanoid teacher who explains things clearly, kindly, and simply. You encourage students and never lecture them.",
-    });
+    let content = [];
 
-    if (question) {
-      messages.push({
-        role: "user",
-        content: question,
+    // Add text message
+    if (userMessage) {
+      content.push({ type: "text", text: userMessage });
+    }
+
+    // Add image if available
+    if (imageFile) {
+      content.push({
+        type: "input_image",
+        image: imageFile.toString("base64"),
       });
     }
 
-    // If an image was sent, attach it as base64
-    if (image && typeof image !== "string") {
-      const bytes = await image.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      const mime = image.type;
-
-      const base64 = `data:${mime};base64,${buffer.toString("base64")}`;
-
-      messages.push({
-        role: "user",
-        content: [
-          {
-            type: "image_url",
-            image_url: { url: base64 },
-          },
-        ],
-      });
-    }
-
-    // Add category context
-    messages.push({
-      role: "assistant",
-      content: `Category: ${category}`,
+    // GPT-4o-mini Vision request
+    const completion = await client.responses.create({
+      model: "gpt-4o-mini",
+      input: content,
     });
 
-    // OpenAI Request
-    const completion = await client.chat.completions.create({
-      model: "gpt-4o",
-      messages: messages,
-      temperature: 0.7,
-      max_tokens: 1000,
-    });
+    const responseText = completion.output_text || "No response";
 
-    const answer =
-      completion.choices?.[0]?.message?.content ||
-      "I couldn't generate a good answer.";
-
-    return new Response(JSON.stringify({ answer }), {
+    return new Response(JSON.stringify({ result: responseText }), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("API ERROR:", err);
+    console.error("ERROR:", err);
     return new Response(
-      JSON.stringify({ answer: "Error processing your request." }),
+      JSON.stringify({ error: "Failed to process request" }),
       { status: 500 }
     );
   }
