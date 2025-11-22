@@ -7,24 +7,14 @@ const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function POST(req) {
   try {
-    const form = await req.formData();
-    const text = form.get("message") || "";
-    const category = form.get("category") || "General";
-    const imageFile = form.get("image");
+    const body = await req.json(); // Frontend sends JSON with message + imageBase64
+    const { message, category, imageBase64 } = body;
 
     const input = [];
 
-    if (text) {
-      input.push({ type: "text", text: `Category: ${category}\nQuestion: ${text}` });
-    }
+    if (message) input.push({ type: "text", text: `Category: ${category || "General"}\nQuestion: ${message}` });
+    if (imageBase64) input.push({ type: "input_image", image: imageBase64 });
 
-    if (imageFile && imageFile instanceof File) {
-      const arrayBuffer = await imageFile.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString("base64");
-      input.push({ type: "input_image", image: base64 });
-    }
-
-    // Fast multimodal model
     const completion = await client.responses.create({
       model: "gpt-4o-mini",
       input,
@@ -43,9 +33,6 @@ export async function POST(req) {
     });
   } catch (err) {
     console.error("solveText error:", err);
-    return new Response(
-      JSON.stringify({ result: "Error processing your request." }),
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ result: "Error processing your request." }), { status: 500 });
   }
 }
