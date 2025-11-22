@@ -211,13 +211,23 @@ export default function Teachy() {
             placeholder={loading ? "Waiting for AI..." : "Type your question..."}
             disabled={loading}
           />
-          <input
-            type="file"
-            accept="image/*"
-            onChange={e => setSelectedImage(e.target.files[0])}
-            disabled={loading}
-            style={{ marginLeft: "8px" }}
-          />
+
+          {/* Custom file upload button */}
+          <div className="file-upload-wrapper">
+            <input
+              type="file"
+              id="file-upload"
+              accept="image/*"
+              onChange={e => setSelectedImage(e.target.files[0])}
+              disabled={loading}
+              style={{ display: "none" }}
+            />
+            <label htmlFor="file-upload" className="file-upload-btn" style={{ backgroundColor: colors.button }}>
+              📷 Upload Image
+            </label>
+            {selectedImage && <span className="file-name">{selectedImage.name}</span>}
+          </div>
+
           <button type="submit" disabled={loading} style={{ backgroundColor: colors.button }}>Send</button>
         </form>
       </div>
@@ -239,7 +249,13 @@ export default function Teachy() {
         .msg-bubble { max-width: 70%; padding: 16px 20px; border-radius: 20px; word-break: break-word; box-shadow: 0 4px 12px rgba(0,0,0,0.2); line-height: 1.7; font-size: 0.95rem; }
         .chat-input { display: flex; padding: 12px 15px; border-top: 1px solid #333; gap: 8px; align-items: center; position: sticky; bottom: 0; background: inherit; }
         .chat-input input[type="text"] { flex: 1; padding: 14px 20px; border-radius: 25px; border: none; outline: none; font-size: 0.95rem; }
-        .chat-input input[type="file"] { cursor: pointer; }
+
+        /* File upload button */
+        .file-upload-wrapper { display: flex; align-items: center; gap: 10px; }
+        .file-upload-btn { padding: 10px 20px; border-radius: 25px; color: #fff; cursor: pointer; font-weight: 600; font-size: 0.95rem; transition: background 0.2s; }
+        .file-upload-btn:hover { filter: brightness(1.1); }
+        .file-name { font-size: 0.85rem; color: #aaa; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
         .chat-input button { padding: 14px 25px; border-radius: 25px; border: none; color: #fff; font-weight: 600; cursor: pointer; }
 
         .dot { width: 6px; height: 6px; border-radius: 50%; background-color: #aaa; animation: bounce 1s infinite; }
