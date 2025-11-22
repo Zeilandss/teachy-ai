@@ -1,71 +1,41 @@
 import OpenAI from "openai";
-import formidable from "formidable";
-import fs from "fs";
 
-// Tell Next.js to disable its default body parser for this route
+
 export const config = {
-  api: {
-    bodyParser: false,
-  },
+api: { bodyParser: false },
 };
 
-// Initialize OpenAI client
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
-// Parse form-data (text + image)
-const parseForm = (req) =>
-  new Promise((resolve, reject) => {
-    const form = formidable({ multiples: false });
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    form.parse(req, (err, fields, files) => {
-      if (err) reject(err);
-      else resolve({ fields, files });
-    });
-  });
 
 export async function POST(req) {
-  try {
-    const { fields, files } = await parseForm(req);
+try {
+const form = await req.formData();
+const text = form.get("message") || "";
+const imageFile = form.get("image");
 
-    const userMessage = fields.message || "";
 
-    const imageFile = files.image
-      ? fs.readFileSync(files.image.filepath)
-      : null;
+const input = [];
+if (text) input.push({ type: "text", text });
 
-    let content = [];
 
-    // Add text message
-    if (userMessage) {
-      content.push({ type: "text", text: userMessage });
-    }
+if (imageFile && typeof imageFile.arrayBuffer === "function") {
+const bytes = Buffer.from(await imageFile.arrayBuffer());
+input.push({ type: "input_image", image: bytes.toString("base64") });
+}
 
-    // Add image if available
-    if (imageFile) {
-      content.push({
-        type: "input_image",
-        image: imageFile.toString("base64"),
-      });
-    }
 
-    // GPT-4o-mini Vision request
-    const completion = await client.responses.create({
-      model: "gpt-4o-mini",
-      input: content,
-    });
+const completion = await client.responses.create({
+model: "gpt-4o-mini",
+input,
+max_output_tokens: 150,
+});
 
-    const responseText = completion.output_text || "No response";
 
-    return new Response(JSON.stringify({ result: responseText }), {
-      status: 200,
-    });
-  } catch (err) {
-    console.error("ERROR:", err);
-    return new Response(
-      JSON.stringify({ error: "Failed to process request" }),
-      { status: 500 }
-    );
-  }
+return Response.json({ result: completion.output_text });
+} catch (e) {
+console.error(e);
+return Response.json({ error: "Error" }, { status: 500 });
+}
 }
